@@ -17,53 +17,61 @@
 
   <p id="result">Chưa có kết quả</p>
 
-  <script>
-    const URL = "https://teachablemachine.withgoogle.com/models/DDSVpYbTr/";
-    let model;
+ <script>
+  const URL = "https://teachablemachine.withgoogle.com/models/DDSVpYbTr/";
+  let model;
 
-    async function load() {
-      model = await tmImage.load(
-        URL + "model.json",
-        URL + "metadata.json"
+  async function load() {
+    model = await tmImage.load(
+      URL + "model.json",
+      URL + "metadata.json"
+    );
+    console.log("Model loaded");
+  }
+  load();
+
+  async function run() {
+    if (!model) {
+      alert("Model đang load, chờ xíu rồi bấm lại");
+      return;
+    }
+
+    const file = document.getElementById("img").files[0];
+    if (!file) {
+      alert("Chọn hình trước");
+      return;
+    }
+
+    const img = document.createElement("img");
+    img.src = URL.createObjectURL(file);
+    await img.decode();
+
+    const prediction = await model.predict(img);
+
+    let best = prediction[0];
+    for (let i = 1; i < prediction.length; i++) {
+      if (prediction[i].probability > best.probability) {
+        best = prediction[i];
+      }
+    }
+
+    const confidence = (best.probability * 100).toFixed(2);
+
+    document.getElementById("result").innerText =
+      "Label: " + best.className + " | Độ tin cậy: " + confidence + "%";
+
+    const jsonResult = {
+      label: best.className,
+      confidence: confidence
+    };
+
+    if (window.ReactNativeWebView) {
+      window.ReactNativeWebView.postMessage(
+        JSON.stringify(jsonResult)
       );
     }
-    load();
-
-    async function run() {
-      const file = document.getElementById("img").files[0];
-      if (!file) {
-        alert("Chọn hình trước");
-        return;
-      }
-
-      const img = document.createElement("img");
-      img.src = URL.createObjectURL(file);
-      await img.decode();
-
-      const prediction = await model.predict(img);
-
-      let best = prediction[0];
-      for (let i = 1; i < prediction.length; i++) {
-        if (prediction[i].probability > best.probability) {
-          best = prediction[i];
-        }
-      }
-
-      const jsonResult = {
-        label: best.className,
-        confidence: best.probability
-      };
-
-      document.getElementById("result").innerText =
-        "Kết quả: " + jsonResult.label;
-
-      // gửi về Thunkable (nếu có)
-      if (window.ReactNativeWebView) {
-        window.ReactNativeWebView.postMessage(
-          JSON.stringify(jsonResult)
-        );
-      }
-    }
-  </script>
+  }
+</script>
 </body>
 </html>
+
