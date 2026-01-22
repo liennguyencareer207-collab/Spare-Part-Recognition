@@ -1,11 +1,12 @@
 <!DOCTYPE html>
-<html>
+<html lang="vi">
 <head>
   <meta charset="UTF-8">
-  <title>AI Result</title>
+  <title>Spare Part Recognition</title>
 
-  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image"></script>
+  <!-- THƯ VIỆN BẮT BUỘC -->
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.10.0/dist/tf.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@0.8/dist/teachablemachine-image.min.js"></script>
 </head>
 
 <body>
@@ -13,66 +14,66 @@
 
   <input type="file" id="img" accept="image/*">
   <br><br>
-  <button onclick="run()">Nhận diện</button>
+  <button onclick="predict()">Nhận diện</button>
 
-  <p id="result">Chưa có kết quả</p>
+  <p id="status">Chưa có kết quả</p>
 
- <script>
-  const URL = "https://teachablemachine.withgoogle.com/models/DDSVpYbTr";
-  let model;
+  <script>
+    const URL = "https://teachablemachine.withgoogle.com/models/DDSVpYbTr";
 
-  async function load() {
-    model = await tmImage.load(
-      URL + "model.json",
-      URL + "metadata.json"
-    );
-    console.log("Model loaded");
-  }
-  load();
+    let model;
 
-  async function run() {
-    if (!model) {
-      alert("Model đang load, chờ xíu rồi bấm lại");
-      return;
+    async function loadModel() {
+      document.getElementById("status").innerText = "Đang load model...";
+      model = await tmImage.load(
+        URL + "/model.json",
+        URL + "/metadata.json"
+      );
+      document.getElementById("status").innerText = "Model đã sẵn sàng";
     }
 
-    const file = document.getElementById("img").files[0];
-    if (!file) {
-      alert("Chọn hình trước");
-      return;
-    }
+    loadModel();
 
-    const img = document.createElement("img");
-    img.src = URL.createObjectURL(file);
-    await img.decode();
+    async function predict() {
+      if (!model) {
+        alert("Model chưa sẵn sàng, chờ xíu");
+        return;
+      }
 
-    const prediction = await model.predict(img);
+      const file = document.getElementById("img").files[0];
+      if (!file) {
+        alert("Chọn hình trước");
+        return;
+      }
 
-    let best = prediction[0];
-    for (let i = 1; i < prediction.length; i++) {
-      if (prediction[i].probability > best.probability) {
-        best = prediction[i];
+      const img = document.createElement("img");
+      img.src = URL.createObjectURL(file);
+      await img.decode();
+
+      const prediction = await model.predict(img);
+
+      let best = prediction[0];
+      for (let i = 1; i < prediction.length; i++) {
+        if (prediction[i].probability > best.probability) {
+          best = prediction[i];
+        }
+      }
+
+      const percent = (best.probability * 100).toFixed(2);
+
+      document.getElementById("status").innerText =
+        "Label: " + best.className + " | Độ tin cậy: " + percent + "%";
+
+      // GỬI JSON CHO THUNKABLE
+      if (window.ReactNativeWebView) {
+        window.ReactNativeWebView.postMessage(
+          JSON.stringify({
+            label: best.className,
+            confidence: percent
+          })
+        );
       }
     }
-
-    const confidence = (best.probability * 100).toFixed(2);
-
-    document.getElementById("result").innerText =
-      "Label: " + best.className + " | Độ tin cậy: " + confidence + "%";
-
-    const jsonResult = {
-      label: best.className,
-      confidence: confidence
-    };
-
-    if (window.ReactNativeWebView) {
-      window.ReactNativeWebView.postMessage(
-        JSON.stringify(jsonResult)
-      );
-    }
-  }
-</script>
+  </script>
 </body>
 </html>
-
-
